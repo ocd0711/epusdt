@@ -1,19 +1,19 @@
-FROM golang:1.26-rc as builder
-RUN mkdir /go/app
+FROM golang:1.22 AS builder
+
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+
 WORKDIR /go/app
 
-COPY src/ .
-
+COPY src/go.mod src/go.sum ./
 RUN go mod download
-RUN go build -o /app/bin/epusdt ./main.go
+
+COPY src/ .
+RUN go build -o epusdt ./main.go
 
 FROM alpine:latest
-COPY --from=builder /app/bin/epusdt /app/bin/epusdt
+RUN apk add --no-cache ca-certificates tzdata
+WORKDIR /app/bin
+COPY --from=builder /go/app/epusdt /app/bin/epusdt
 
-RUN apk update && apk upgrade && apk add ca-certificates && update-ca-certificates
-# Change TimeZone
-RUN apk add --update tzdata
-# Clean APK cache
-RUN rm -rf /var/cache/apk/*
-
-ENTRYPOINT [ "/app/bin/epusdt" ]
+ENTRYPOINT ["/app/bin/epusdt"]
